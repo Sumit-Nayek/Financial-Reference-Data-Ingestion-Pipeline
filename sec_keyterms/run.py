@@ -9,6 +9,37 @@ from sec_keyterms.extractor import SEC424B2Extractor
 from sec_keyterms.validators import SecurityReferenceSchema
 from sec_keyterms.writers import ReferenceDataWriter
 
+MOCK_HTML_MAP = {
+    "RELIANCE": """
+    <html>
+        <head><title>RELIANCE INDUSTRIES LIMITED</title></head>
+        <body>
+            <table>
+                <tr><td>ISIN:</td><td>INE002A08601</td></tr>
+                <tr><td>BSE Scrip Code:</td><td>500325</td></tr>
+                <tr><td>Coupon Rate:</td><td>7.20%</td></tr>
+                <tr><td>Redemption Date:</td><td>2032-05-18</td></tr>
+                <tr><td>Credit Rating:</td><td>CRISIL AAA</td></tr>
+            </table>
+        </body>
+    </html>
+    """,
+    "HDFCBANK": """
+    <html>
+        <head><title>HDFC BANK LIMITED</title></head>
+        <body>
+            <table>
+                <tr><td>ISIN:</td><td>INE040A08435</td></tr>
+                <tr><td>BSE Scrip Code:</td><td>500180</td></tr>
+                <tr><td>Coupon Rate:</td><td>7.70%</td></tr>
+                <tr><td>Redemption Date:</td><td>2031-03-25</td></tr>
+                <tr><td>Credit Rating:</td><td>CRISIL AAA</td></tr>
+            </table>
+        </body>
+    </html>
+    """
+}
+
 
 def run_pipeline(target_date: date, enable_llm: bool = False) -> None:
     batch_id = str(uuid.uuid4())[:8]
@@ -32,26 +63,12 @@ def run_pipeline(target_date: date, enable_llm: bool = False) -> None:
     golden_records: List[Dict[str, Any]] = []
     quarantine_records: List[Dict[str, Any]] = []
 
-    # Mock structured source payload
-    sample_filing_html = """
-    <html>
-        <head><title>RELIANCE INDUSTRIES LIMITED</title></head>
-        <body>
-            <table>
-                <tr><td>Issuer:</td><td>Reliance Industries Limited</td></tr>
-                <tr><td>ISIN:</td><td>INE002A08601</td></tr>
-                <tr><td>BSE Scrip Code:</td><td>500325</td></tr>
-                <tr><td>Coupon Rate:</td><td>7.20%</td></tr>
-                <tr><td>Redemption Date:</td><td>2032-05-18</td></tr>
-                <tr><td>Credit Rating:</td><td>CRISIL AAA</td></tr>
-            </table>
-        </body>
-    </html>
-    """
-
     for _, row in filings_df.iterrows():
-        raw_data = extractor.extract(sample_filing_html, enable_llm_fallback=enable_llm)
-        raw_data["source_symbol"] = row.get("symbol")
+        symbol = row.get("symbol", "RELIANCE")
+        html_payload = MOCK_HTML_MAP.get(symbol, MOCK_HTML_MAP["RELIANCE"])
+
+        raw_data = extractor.extract(html_payload, enable_llm_fallback=enable_llm)
+        raw_data["source_symbol"] = symbol
         raw_data["source_url"] = row.get("file_url")
 
         try:
