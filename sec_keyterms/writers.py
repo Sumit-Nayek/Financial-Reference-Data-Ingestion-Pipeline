@@ -1,9 +1,3 @@
-import json
-import csv
-from datetime import datetime
-from pathlib import Path
-from typing import List, Dict, Any
-from sec_keyterms.config import PROCESSED_DATA_DIR
 # sec_keyterms/writers.py
 import json
 import csv
@@ -35,23 +29,25 @@ class ReferenceDataWriter:
         execution_date: date,
         batch_id: str,
     ) -> None:
-        """Saves records to SQLite with upsert handling and logs run metrics."""
+        """Saves records to SQLite with in-batch upsert handling and logs run metrics."""
         session = SessionLocal()
         try:
-            # 1. Upsert Securities & Terms
             for rec in valid_records:
-                existing_sec = session.query(Security).filter_by(isin=rec["isin"]).first()
+                isin = rec["isin"]
+                
+                # Check both the session identity map and the database
+                existing_sec = session.get(Security, isin)
 
                 if not existing_sec:
                     sec = Security(
-                        isin=rec["isin"],
+                        isin=isin,
                         bse_scrip_code=rec.get("bse_scrip_code"),
                         source_symbol=rec.get("source_symbol"),
                         issuer_name=rec["issuer_name"],
                         currency=rec.get("currency", "INR"),
                     )
                     term = FixedIncomeTerm(
-                        isin=rec["isin"],
+                        isin=isin,
                         coupon_rate=rec["coupon_rate"],
                         maturity_date=rec["maturity_date"],
                         credit_rating=rec.get("credit_rating"),
@@ -60,15 +56,27 @@ class ReferenceDataWriter:
                     sec.terms = term
                     session.add(sec)
                 else:
-                    # Update existing record
+                    # Update existing record in place
                     existing_sec.bse_scrip_code = rec.get("bse_scrip_code")
                     existing_sec.issuer_name = rec["issuer_name"]
                     if existing_sec.terms:
                         existing_sec.terms.coupon_rate = rec["coupon_rate"]
                         existing_sec.terms.maturity_date = rec["maturity_date"]
                         existing_sec.terms.credit_rating = rec.get("credit_rating")
+                        existing_sec.terms.source_url = rec.get("source_url")
+                    else:
+                        existing_sec.terms = FixedIncomeTerm(
+                            isin=isin,
+                            coupon_rate=rec["coupon_rate"],
+                            maturity_date=rec["maturity_date"],
+                            credit_rating=rec.get("credit_rating"),
+                            source_url=rec.get("source_url"),
+                        )
+                
+                # Flush changes to the session to track the entity for subsequent records
+                session.flush()
 
-            # 2. Insert Quarantine records
+            # Insert Quarantine records
             for err in quarantine_records:
                 q_rec = QuarantineRecord(
                     isin=err.get("isin"),
@@ -78,7 +86,7 @@ class ReferenceDataWriter:
                 )
                 session.add(q_rec)
 
-            # 3. Log Audit Entry
+            # Log Audit Entry
             audit = PipelineAudit(
                 batch_id=batch_id,
                 execution_date=execution_date,
@@ -113,16 +121,4 @@ class ReferenceDataWriter:
             json.dump(payload, f, indent=2, ensure_ascii=False)
 
         temp_path.replace(target_path)
-        return target_path
-
-    def write_quarantine(self, errors: List[Dict[str, Any]], filename: str = "quarantine_exceptions.csv") -> Path:
-        target_path = self.output_dir / filename
-        fieldnames = ["isin", "issuer_name", "error_reason", "failed_at"]
-
-        with open(target_path, "w", newline="", encoding="utf-8") as f:
-            writer = csv.DictWriter(f, fieldnames=fieldnames)
-            writer.writeheader()
-            for err in errors:
-                writer.writerow(err)
-
         return target_path
