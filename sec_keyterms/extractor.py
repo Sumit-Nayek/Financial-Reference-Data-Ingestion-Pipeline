@@ -1,3 +1,4 @@
+# sec_keyterms/extractor.py
 import re
 from typing import Dict, Any, Optional
 from bs4 import BeautifulSoup
@@ -9,9 +10,12 @@ class SEC424B2Extractor:
     Extractor tailored for Indian Listed Debentures (NCDs) and Corporate Actions.
     """
 
-    # Indian Security Identifiers
-    ISIN_PATTERN = re.compile(r"\b(INE[0-9A-Z]{9}[0-9]|INF[0-9A-Z]{9}[0-9]|IN0[0-9A-Z]{9}[0-9])\b")
-    SCRIP_CODE_PATTERN = re.compile(r"\b(5\d{5})\b")  # BSE Scrip codes start with 5 (e.g., 500325)
+    # 12-character Indian ISIN: 3-char prefix (INE/INF/IN0/IN9) + 8-char body + 1-digit checksum = 12 chars
+    ISIN_PATTERN = re.compile(
+        r"\b((?:INE|INF|IN0|IN9)[0-9A-Z]{8}[0-9])\b",
+        re.IGNORECASE
+    )
+    SCRIP_CODE_PATTERN = re.compile(r"\b(5\d{5})\b")  # BSE Scrip codes start with 5 (e.g., 500180)
     COUPON_PATTERN = re.compile(
         r"(?:coupon(?: rate)?|interest rate|interest)\s*[:=-]?\s*(\d+(?:\.\d+)?)\s*%",
         re.IGNORECASE,
@@ -34,7 +38,7 @@ class SEC424B2Extractor:
         return " ".join(soup.get_text().split())
 
     def extract_from_html(self, html_content: str) -> Dict[str, Any]:
-        soup = BeautifulSoup(html_content, "lxml")
+        soup = BeautifulSoup(html_content, "html.parser")
         full_text = self._clean_text(soup)
 
         extracted: Dict[str, Any] = {
@@ -79,7 +83,7 @@ class SEC424B2Extractor:
         missing_fields = [f for f in required_fields if data.get(f) is None]
 
         if missing_fields and enable_llm_fallback:
-            soup = BeautifulSoup(html_content, "lxml")
+            soup = BeautifulSoup(html_content, "html.parser")
             cleaned_text = self._clean_text(soup)
             llm_data = self.llm_extractor.extract_terms_from_text(cleaned_text[:5000])
 
