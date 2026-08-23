@@ -1,6 +1,7 @@
 # sec_keyterms/run.py
 import argparse
-from datetime import date, datetime
+import uuid
+from datetime import date
 from typing import List, Dict, Any
 from sec_keyterms.business_day import MarketCalendar
 from sec_keyterms.daily_index import SECDailyIndex
@@ -10,27 +11,28 @@ from sec_keyterms.writers import ReferenceDataWriter
 
 
 def run_pipeline(target_date: date, enable_llm: bool = False) -> None:
-    print(f"[PIPELINE START] Initializing reference ingestion for {target_date.isoformat()}")
+    batch_id = str(uuid.uuid4())[:8]
+    print(f"[PIPELINE START] Batch ID: {batch_id} | Target Date: {target_date.isoformat()}")
 
-    # 1. Evaluate market session
+    # 1. Market Calendar Verification
     calendar = MarketCalendar(exchange="NSE")
     active_date = calendar.get_latest_business_day(target_date)
     if active_date != target_date:
-        print(f"[CALENDAR] {target_date} was a market holiday/weekend. Rolling back to {active_date}")
+        print(f"[CALENDAR] {target_date} was closed. Processing active session {active_date}")
 
-    # 2. Fetch daily index filings
+    # 2. Daily Index Filings Discovery
     indexer = SECDailyIndex()
     filings_df = indexer.fetch_and_filter(active_date)
-    print(f"[INDEX] Discovered {len(filings_df)} target corporate filings.")
+    print(f"[INDEX] Discovered {len(filings_df)} target filings.")
 
-    # 3. Extraction & Validation loop
+    # 3. Extraction & Validation
     extractor = SEC424B2Extractor()
     writer = ReferenceDataWriter()
 
     golden_records: List[Dict[str, Any]] = []
     quarantine_records: List[Dict[str, Any]] = []
 
-    # Mock sample document payload for demonstration
+    # Mock structured source payload
     sample_filing_html = """
     <html>
         <head><title>RELIANCE INDUSTRIES LIMITED</title></head>
@@ -53,7 +55,6 @@ def run_pipeline(target_date: date, enable_llm: bool = False) -> None:
         raw_data["source_url"] = row.get("file_url")
 
         try:
-            # Validate schema
             validated = SecurityReferenceSchema(**raw_data)
             golden_records.append(validated.model_dump())
         except Exception as e:
@@ -61,16 +62,20 @@ def run_pipeline(target_date: date, enable_llm: bool = False) -> None:
                 "isin": raw_data.get("isin", "UNKNOWN"),
                 "issuer_name": raw_data.get("issuer_name", "UNKNOWN"),
                 "error_reason": str(e),
-                "failed_at": datetime.now().isoformat()
+                "raw_payload": raw_data,
             })
 
-    # 4. Commit atomic persistence
-    golden_path = writer.write_golden_copy(golden_records)
-    print(f"[LOAD SUCCESS] Committed {len(golden_records)} records to {golden_path}")
+    # 4. Commit to Relational Database & JSON
+    writer.persist_to_database(
+        valid_records=golden_records,
+        quarantine_records=quarantine_records,
+        execution_date=active_date,
+        batch_id=batch_id,
+    )
+    json_path = writer.write_golden_copy(golden_records)
 
-    if quarantine_records:
-        quarantine_path = writer.write_quarantine(quarantine_records)
-        print(f"[QUARANTINE ALERT] Diverted {len(quarantine_records)} invalid records to {quarantine_path}")
+    print(f"[DB COMMIT] Persisted {len(golden_records)} records to SQLite database (security_master.db)")
+    print(f"[LOAD SUCCESS] JSON master committed to {json_path}")
 
 
 if __name__ == "__main__":
