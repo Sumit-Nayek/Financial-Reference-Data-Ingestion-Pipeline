@@ -4,7 +4,10 @@ from typing import Optional
 import pandas_market_calendars as mcal
 from sec_keyterms.config import DEFAULT_EXCHANGE
 
+import pandas_market_calendars as mcal
 
+# Switch to National Stock Exchange of India
+calendar = mcal.get_calendar("NSE")
 class MarketCalendar:
     """Manages exchange trading schedules, holidays, and settlement calendar checks."""
 
