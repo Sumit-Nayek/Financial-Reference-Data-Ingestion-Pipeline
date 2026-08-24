@@ -1,17 +1,17 @@
 {
   "_metadata": {
-    "generated_at": "2026-08-23T10:46:32.924241",
+    "generated_at": "2026-08-23T15:44:33.533401",
     "total_records": 2,
     "market_region": "IN",
     "schema_version": "1.0.0"
   },
   "data": [
     {
-      "isin": "INE002A08601",
-      "bse_scrip_code": "500325",
-      "issuer_name": "RELIANCE INDUSTRIES LIMITED",
-      "coupon_rate": 7.2,
-      "maturity_date": "2032-05-18",
+      "isin": "INE040A08435",
+      "bse_scrip_code": "500180",
+      "issuer_name": "HDFC BANK LIMITED",
+      "coupon_rate": 7.7,
+      "maturity_date": "2031-03-25",
       "credit_rating": "CRISIL AAA",
       "currency": "INR"
     },
