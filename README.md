@@ -20,7 +20,7 @@ An institutional-grade ETL and validation pipeline engineered to ingest, parse, 
 
 ## Motivation
 
-In financial institutions and market data providers (such as ICE, Bloomberg, and LSEG), **reference data accuracy is mission-critical**. Fixed-income instruments—such as Non-Convertible Debentures (NCDs), corporate bonds, and commercial papers—rely on exact metadata (ISINs, coupon rates, redemption dates, credit ratings, and day-count conventions) to feed downstream pricing engines, risk models, and settlement clearinghouses.
+In financial institutions and market data providers (such as ICE, Bloomberg, and LSEG), **reference data accuracy is mission-critical**. Fixed-income instruments such as Non-Convertible Debentures (NCDs), corporate bonds, and commercial papers—rely on exact metadata (ISINs, coupon rates, redemption dates, credit ratings, and day-count conventions) to feed downstream pricing engines, risk models, and settlement clearinghouses.
 
 * **The Problem:** Manual term-sheet processing takes 5–15 minutes per filing, is prone to human error, and struggles with non-standard prospectus formatting. Even minor data entry errors can cause trade settlement failures and mispriced derivatives.
 * **The Solution:** A deterministic, self-healing pipeline that automates ingestion, extracts structured and unstructured disclosures, enforces strict symbology validation, and isolates malformed records without halting execution.
