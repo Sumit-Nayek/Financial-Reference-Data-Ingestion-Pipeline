@@ -5,7 +5,6 @@ An institutional-grade ETL and validation pipeline engineered to ingest, parse, 
 
 ---
 
----
 ## Key Features
 
 - **Exchange Calendar Awareness (`business_day.py`):** Automatically rolls back batch runs across Indian market holidays and weekends using `pandas-market-calendars` (NSE/BSE).
