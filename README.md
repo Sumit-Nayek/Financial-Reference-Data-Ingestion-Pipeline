@@ -1,7 +1,7 @@
 
 <img width="1376" height="768" alt="Gemini_Generated_Image_wmbjh2wmbjh2wmbj" src="https://github.com/user-attachments/assets/71df97b7-756e-49b1-b339-205d76a57e3f" />
 
-An institutional-grade ETL and validation pipeline engineered to ingest, parse, validate, and persist fixed-income securities and corporate debt reference data across capital markets (NSE, BSE, and SEC EDGAR).
+An institutional grade ETL and validation pipeline engineered to ingest, parse, validate, and persist fixed-income securities and corporate debt reference data across capital markets (NSE, BSE, and SEC EDGAR).
 
 ---
 
