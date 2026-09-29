@@ -1,16 +1,16 @@
 
 <img width="1376" height="768" alt="Gemini_Generated_Image_wmbjh2wmbjh2wmbj" src="https://github.com/user-attachments/assets/71df97b7-756e-49b1-b339-205d76a57e3f" />
 
-An institutional grade ETL and validation pipeline engineered to ingest, parse, validate, and persist fixed-income securities and corporate debt reference data across capital markets (NSE, BSE, and SEC EDGAR).
+An institutional grade ETL and validation pipeline engineered to ingest, parse, validate, and persist fixed income securities and corporate debt reference data across capital markets (NSE, BSE, and SEC EDGAR).
 
 ---
 
 ## Key Features
 
 - **Exchange Calendar Awareness (`business_day.py`):** Automatically rolls back batch runs across Indian market holidays and weekends using `pandas-market-calendars` (NSE/BSE).
-- **Session-Aware Ingestion (`http_client.py`):** Handles connection pooling, automatic cookie initialization, rate-limiting, and exponential backoff.
+- **Session Aware Ingestion (`http_client.py`):** Handles connection pooling, automatic cookie initialization, rate-limiting, and exponential backoff.
 - **Hybrid Extraction Engine (`extractor.py` & `llm_client.py`):** Uses fast DOM/regex extraction for tabular prospectuses with seamless LLM fallback for ambiguous disclosures.
-- **Symbology & Schema Enforcement (`validators.py`):** Validates 12-character Indian ISIN prefixes (`INE`, `INF`, `IN0`), BSE 6-digit scrip codes, and logical financial boundaries.
+- **Symbology & Schema Enforcement (`validators.py`):** Validates 12 character Indian ISIN prefixes (`INE`, `INF`, `IN0`), BSE 6-digit scrip codes, and logical financial boundaries.
 - **Atomic Persistence & Lineage (`writers.py`):** Atomically commits valid records to `golden_master.json` with metadata provenance while routing bad records to `quarantine_exceptions.csv`.
 - **Benchmarking Suite (`benchmark_report.py`):** Measures throughput, memory overhead, and latency per document, logging metrics to `docs/Baseline_Report.md`.
 
