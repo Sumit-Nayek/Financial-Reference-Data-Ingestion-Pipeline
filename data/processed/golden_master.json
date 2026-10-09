@@ -1,6 +1,6 @@
 {
   "_metadata": {
-    "generated_at": "2026-08-23T15:44:33.533401",
+    "generated_at": "2026-10-09T02:37:10.608846",
     "total_records": 2,
     "market_region": "IN",
     "schema_version": "1.0.0"
@@ -9,6 +9,8 @@
     {
       "isin": "INE040A08435",
       "bse_scrip_code": "500180",
+      "source_symbol": "HDFCBANK",
+      "source_url": "https://www.nseindia.com/companies-listing/corporate-filings-announcements",
       "issuer_name": "HDFC BANK LIMITED",
       "coupon_rate": 7.7,
       "maturity_date": "2031-03-25",
@@ -18,6 +20,8 @@
     {
       "isin": "INE002A08601",
       "bse_scrip_code": "500325",
+      "source_symbol": "RELIANCE",
+      "source_url": "https://www.nseindia.com/companies-listing/corporate-filings-announcements",
       "issuer_name": "RELIANCE INDUSTRIES LIMITED",
       "coupon_rate": 7.2,
       "maturity_date": "2032-05-18",

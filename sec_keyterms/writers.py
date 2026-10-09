@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import List, Dict, Any
 from sec_keyterms.config import PROCESSED_DATA_DIR
 from sec_keyterms.database import (
+    engine,
     init_db,
     SessionLocal,
     Security,
@@ -14,13 +15,28 @@ from sec_keyterms.database import (
     PipelineAudit,
 )
 
+# Instead of overwriting existing metadata with None:
+existing.source_symbol = incoming.source_symbol
+existing.source_url = incoming.source_url
 
+# Preserve existing values when incoming metadata is absent:
+if incoming.source_symbol is not None:
+    existing.source_symbol = incoming.source_symbol
+
+if incoming.source_url is not None:
+    existing.source_url = incoming.source_url
 class ReferenceDataWriter:
     """Manages persistence to SQLite Security Master database and flat file backups."""
 
-    def __init__(self, output_dir: Path = PROCESSED_DATA_DIR):
+    def __init__(
+        self,
+        output_dir: Path = PROCESSED_DATA_DIR,
+        session_factory=SessionLocal,
+        database_engine=engine,
+    ):
         self.output_dir = output_dir
-        init_db()
+        self.session_factory = session_factory
+        init_db(bind=database_engine)
 
     def persist_to_database(
         self,
@@ -30,8 +46,12 @@ class ReferenceDataWriter:
         batch_id: str,
     ) -> None:
         """Saves records to SQLite with in-batch upsert handling and logs run metrics."""
-        session = SessionLocal()
+        session = self.session_factory()
         try:
+            inserted_count = 0
+            updated_count = 0
+            skipped_count = 0
+
             for rec in valid_records:
                 isin = rec["isin"]
                 
@@ -55,15 +75,31 @@ class ReferenceDataWriter:
                     )
                     sec.terms = term
                     session.add(sec)
+                    inserted_count += 1
                 else:
-                    # Update existing record in place
-                    existing_sec.bse_scrip_code = rec.get("bse_scrip_code")
-                    existing_sec.issuer_name = rec["issuer_name"]
+                    changed = False
+                    security_values = {
+                        "bse_scrip_code": rec.get("bse_scrip_code"),
+                        "source_symbol": rec.get("source_symbol"),
+                        "issuer_name": rec["issuer_name"],
+                        "currency": rec.get("currency", "INR"),
+                    }
+                    for field, value in security_values.items():
+                        if getattr(existing_sec, field) != value:
+                            setattr(existing_sec, field, value)
+                            changed = True
+
                     if existing_sec.terms:
-                        existing_sec.terms.coupon_rate = rec["coupon_rate"]
-                        existing_sec.terms.maturity_date = rec["maturity_date"]
-                        existing_sec.terms.credit_rating = rec.get("credit_rating")
-                        existing_sec.terms.source_url = rec.get("source_url")
+                        term_values = {
+                            "coupon_rate": rec["coupon_rate"],
+                            "maturity_date": rec["maturity_date"],
+                            "credit_rating": rec.get("credit_rating"),
+                            "source_url": rec.get("source_url"),
+                        }
+                        for field, value in term_values.items():
+                            if getattr(existing_sec.terms, field) != value:
+                                setattr(existing_sec.terms, field, value)
+                                changed = True
                     else:
                         existing_sec.terms = FixedIncomeTerm(
                             isin=isin,
@@ -72,6 +108,13 @@ class ReferenceDataWriter:
                             credit_rating=rec.get("credit_rating"),
                             source_url=rec.get("source_url"),
                         )
+                        changed = True
+
+                    if changed:
+                        existing_sec.updated_at = datetime.utcnow()
+                        updated_count += 1
+                    else:
+                        skipped_count += 1
                 
                 # Flush changes to the session to track the entity for subsequent records
                 session.flush()
@@ -90,7 +133,10 @@ class ReferenceDataWriter:
             audit = PipelineAudit(
                 batch_id=batch_id,
                 execution_date=execution_date,
-                records_ingested=len(valid_records),
+                records_ingested=inserted_count + updated_count,
+                records_inserted=inserted_count,
+                records_updated=updated_count,
+                records_skipped=skipped_count,
                 records_quarantined=len(quarantine_records),
                 status="SUCCESS",
             )

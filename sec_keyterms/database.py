@@ -11,6 +11,8 @@ from sqlalchemy import (
     Date,
     Text,
     ForeignKey,
+    inspect,
+    text,
 )
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 from sec_keyterms.config import PROCESSED_DATA_DIR
@@ -30,6 +32,9 @@ class PipelineAudit(Base):
     batch_id = Column(String(64), nullable=False)
     execution_date = Column(Date, nullable=False)
     records_ingested = Column(Integer, default=0)
+    records_inserted = Column(Integer, default=0, server_default="0", nullable=False)
+    records_updated = Column(Integer, default=0, server_default="0", nullable=False)
+    records_skipped = Column(Integer, default=0, server_default="0", nullable=False)
     records_quarantined = Column(Integer, default=0)
     status = Column(String(20), default="SUCCESS")
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -73,6 +78,15 @@ class QuarantineRecord(Base):
     failed_at = Column(DateTime, default=datetime.utcnow)
 
 
-def init_db():
+def init_db(bind=engine):
     """Initializes all database tables."""
-    Base.metadata.create_all(bind=engine)
+    Base.metadata.create_all(bind=bind)
+
+    audit_columns = {column["name"] for column in inspect(bind).get_columns(PipelineAudit.__tablename__)}
+    for column_name in ("records_inserted", "records_updated", "records_skipped"):
+        if column_name not in audit_columns:
+            with bind.begin() as connection:
+                connection.execute(text(
+                    f"ALTER TABLE {PipelineAudit.__tablename__} "
+                    f"ADD COLUMN {column_name} INTEGER NOT NULL DEFAULT 0"
+                ))

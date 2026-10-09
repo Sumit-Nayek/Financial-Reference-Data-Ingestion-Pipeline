@@ -6,6 +6,8 @@ from pydantic import BaseModel, Field, field_validator
 class SecurityReferenceSchema(BaseModel):
     isin: str = Field(..., min_length=12, max_length=12)
     bse_scrip_code: Optional[str] = Field(None, min_length=6, max_length=6)
+    source_symbol: Optional[str] = None
+    source_url: Optional[str] = None
     issuer_name: str = Field(..., min_length=2)
     coupon_rate: float = Field(..., ge=0.0, le=25.0)
     maturity_date: str
